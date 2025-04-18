@@ -32,9 +32,9 @@ Whether you're running a small online store or a large e-commerce platform, Monn
 1. Install the plugin via the WordPress plugin installer.
 2. Activate the plugin through the 'Plugins' menu
 3. Navigate to the plugin settings.
-3. Select 'Enable Test Mode' if you would like to make test payments.
-3. Enter your Monnify API credentials
-4. Select the payment methods you would like to support, Hold "SHIFT" to select multiple (Works only in Live Mode).
+4. Select 'Enable Test Mode' if you would like to make test payments.
+5. Enter your Monnify API credentials
+6. Select the payment methods you would like to support, Hold "SHIFT" to select multiple (Works only in Live Mode).
 
 For detailed instructions, please refer to monnify documentation, https://developers.monnify.com/docs/integration-tools/plugin-libraries
 
