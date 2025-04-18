@@ -94,6 +94,20 @@ function monnify_add_links_to_plugin_page($links)
 }
 
 
+// Register Monnify Blocks Support
+add_action('woocommerce_blocks_loaded', 'monnify_register_blocks_support');
+
+function monnify_register_blocks_support() {
+    if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
+        require_once dirname(__FILE__) . '/includes/class-monnify-blocks-support.php';
+        add_action(
+            'woocommerce_blocks_payment_method_type_registration',
+            function(Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
+                $payment_method_registry->register(new WC_Monnify_Blocks_Support());
+            }
+        );
+    }
+}
 
 
 
