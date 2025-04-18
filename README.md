@@ -1,11 +1,11 @@
 # Monnify Official Payment Gateway Plugin
 
-**Contributors:** jimiejosh, marvelous-benji  
-**Tags:** payment gateway, monnify, e-commerce  
-**Requires at least:** 4.7  
-**Tested up to:** 5.4  
-**Stable tag:** 1.0  
-**Requires PHP:** 7.0  
+**Contributors:** jimiejosh, marvelous-benji, oresho
+**Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria, africa, card, bank transfer 
+**Requires at least:** 5.6
+**Tested up to:** 6.5 
+**Stable tag:** 1.1  
+**Requires PHP:** 7.4
 **License:** GPLv2 or later  
 **License URI:** [GNU General Public License, version 2](https://www.gnu.org/licenses/gpl-2.0.html)
 
@@ -21,6 +21,7 @@ Monnify Official Payment Gateway Plugin enables seamless integration of Monnify,
 - Real-time transaction monitoring and reporting.
 - Enhanced security features to protect your customers' data.
 - Seamless integration with popular e-commerce plugins.
+- Supports WooCommerce block checkout
 
 Whether you're running a small online store or a large e-commerce platform, Monnify Official Payment Gateway Plugin is the ideal solution for accepting payments and managing transactions with ease.
 
@@ -29,11 +30,13 @@ Whether you're running a small online store or a large e-commerce platform, Monn
 **Q: How do I install and configure the Monnify Official Payment Gateway Plugin?**
 
 1. Install the plugin via the WordPress plugin installer.
-2. Activate the plugin.
-3. Navigate to the plugin settings and enter your Monnify API credentials.
-4. Configure your payment options and customize the checkout experience.
+2. Activate the plugin through the 'Plugins' menu
+3. Navigate to the plugin settings.
+3. Select 'Enable Test Mode' if you would like to make test payments.
+3. Enter your Monnify API credentials
+4. Select the payment methods you would like to support, Hold "SHIFT" to select multiple (Works only in Live Mode).
 
-For detailed instructions, please refer to monnify documentation, https://developers.monnify.com
+For detailed instructions, please refer to monnify documentation, https://developers.monnify.com/docs/integration-tools/plugin-libraries
 
 **Q: What payment methods does Monnify support?**
 
@@ -41,11 +44,14 @@ Monnify supports a wide range of payment methods, including credit/debit card pa
 
 ## Screenshots
 
-1. Dashboard with real-time transaction monitoring.
-   ![Screenshot 1](assets/screenshot-1.png)
+1. Plugin settings screen
+   ![Screenshot 1](assets/screenshot-3.png)
 
-2. Configuration settings for Monnify payment gateway.
-   ![Screenshot 2](assets/screenshot-2.png)
+2. Dashboard with real-time transaction monitoring.
+   ![Screenshot 2](assets/screenshot-1.png)
+
+3. Configuration settings for Monnify payment gateway.
+   ![Screenshot 3](assets/screenshot-2.png)
 
 ## Changelog
 
@@ -53,12 +59,14 @@ Monnify supports a wide range of payment methods, including credit/debit card pa
 
 - Initial release of the Monnify Official Payment Gateway Plugin.
 
+### 1.1
+
+- Supports WooCommerce block checkout.
+
 ## Upgrade Notice
 
-### 1.0
+### 1.1
 
-Upgrade to version 1.0 to start accepting payments through Monnify and enhance the payment experience for your customers.
+Upgrade to version 1.1 to start accepting payments through Monnify using the WooCommerce block checkout and enhance the payment experience for your customers.
 
 ---
-
-*For more information about Markdown syntax, refer to [Markdown's Syntax Documentation](https://daringfireball.net/projects/markdown/syntax).*
