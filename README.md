@@ -1,10 +1,10 @@
-# Monnify Official Payment Gateway Plugin
+# Monnify Official Payment Gateway
 
 **Contributors:** jimiejosh, marvelous-benji, oresho
 **Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria, africa, card, bank transfer 
 **Requires at least:** 5.6
 **Tested up to:** 6.5 
-**Stable tag:** 1.1  
+**Stable tag:** 1.0.0
 **Requires PHP:** 7.4
 **License:** GPLv2 or later  
 **License URI:** [GNU General Public License, version 2](https://www.gnu.org/licenses/gpl-2.0.html)
@@ -55,18 +55,15 @@ Monnify supports a wide range of payment methods, including credit/debit card pa
 
 ## Changelog
 
-### 1.0
+### 1.0.0
 
 - Initial release of the Monnify Official Payment Gateway Plugin.
-
-### 1.1
-
 - Supports WooCommerce block checkout.
 
 ## Upgrade Notice
 
-### 1.1
+### 1.0.0
 
-Upgrade to version 1.1 to start accepting payments through Monnify using the WooCommerce block checkout and enhance the payment experience for your customers.
+Upgrade to version 1.0.0 to start accepting payments through Monnify using the WooCommerce block checkout and enhance the payment experience for your customers.
 
 ---
