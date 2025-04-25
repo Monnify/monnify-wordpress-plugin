@@ -7,7 +7,9 @@
  * Author URI: https://monnify.com
  * Version: 1.0.0
  * Text Domain: monnify-official
+ * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
+ * Monnify Official Payment Gateway plugin provides a seamless payment experience for your customers on your WordPress website. 
 
  */
 
@@ -47,10 +49,15 @@ function monnify_woocommerce_notice()
  
     if (  isset($plugin_config['testmode']) ? (($plugin_config['testmode'] === 'yes')? true: false) : false ) {
         echo '<div class="error"><p>' . 
-        sprintf(__('Monnify Woocommerce is on Test mode, goto <strong> <a href="%s">Plugin Setting</a></strong> to
-            disable Test mode to start accepting live payment on your website.', 'monnify-official'), esc_url(
-            admin_url('admin.php?page=wc-settings&tab=checkout&section=monnify')
-        )) . '</p></div>';
+            sprintf(
+                // translators: %1$s is the link to the plugin settings page.
+                esc_html__( 
+                    'Monnify Woocommerce is on Test mode, go to %1$s to disable Test mode and start accepting live payments on your website.',
+                    'monnify-official'
+                ),
+                '<strong><a href="' . esc_url(admin_url('admin.php?page=wc-settings&tab=checkout&section=monnify')) . '">' . esc_html__('Plugin Setting', 'monnify-official') . '</a></strong>'
+            ) .
+        '</p></div>';
     }
 }
 

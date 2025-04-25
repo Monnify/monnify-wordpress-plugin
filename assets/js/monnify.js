@@ -33,7 +33,7 @@ function payWithMonnify({
     onComplete: function (response) {
       const transactionReference = response.transactionReference;
       window.location.href = `${redirect_url}&mnfy_reference=${transactionReference}`;
-      jQuery("#wc-monnify-gateway-button").prop("disabled", true);
+      jQuery("#wc-monnify-official-button").prop("disabled", true);
       jQuery("#cancel-btn").remove();
       jQuery("#seye").html(
         `<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received">Please keep the page open while we process your order</p>`
@@ -84,7 +84,7 @@ jQuery(function ($) {
         });
       };
 
-      $("#wc-monnify-payment-gateway-button").click(function (e) {
+      $("#wc-monnify-official-button").click(function (e) {
         e.preventDefault();
         run_monnify();
       });

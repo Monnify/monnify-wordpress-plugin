@@ -3,13 +3,12 @@
 **Contributors:** jimiejosh, marvelous-benji, oresho
 **Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria, africa, card, bank transfer 
 **Requires at least:** 5.6
-**Tested up to:** 6.5 
+**Tested up to:** 6.8
 **Stable tag:** 1.0.0
 **Requires PHP:** 7.4
 **License:** GPLv2 or later  
 **License URI:** [GNU General Public License, version 2](https://www.gnu.org/licenses/gpl-2.0.html)
-
-Monnify payment gateway plugin for WordPress, integrating Monnify's secure payment processing into your e-commerce website.
+Monnify Official Payment Gateway plugin provides a seamless payment experience for your customers on your WordPress website. 
 
 ## Description
 
