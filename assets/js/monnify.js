@@ -1,5 +1,6 @@
 function payWithMonnify({
   amount,
+  reference,
   customerName,
   customerEmail,
   customerMobileNumber,
@@ -10,7 +11,7 @@ function payWithMonnify({
   currency
 }) {
 
-  const reference = `${Math.floor(Math.random() * 1000000000 + 1)}`;
+  // const reference = `${Math.floor(Math.random() * 1000000000 + 1)}`;
   
   MonnifySDK.initialize({
     amount,
@@ -62,6 +63,7 @@ jQuery(function ($) {
           key,
           selectedPaymentMethods,
           contractCode,
+          txnref,
           testmode,
           mon_redirect_url,
           currency
@@ -73,6 +75,7 @@ jQuery(function ($) {
 
         payWithMonnify({
           amount: Number(amount),
+          reference: txnref, // use the generated wp reference
           customerName,
           customerEmail,
           customerMobileNumber,

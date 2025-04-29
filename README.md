@@ -4,7 +4,7 @@
 **Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria, africa, card, bank transfer 
 **Requires at least:** 5.6
 **Tested up to:** 6.8
-**Stable tag:** 1.0.0
+**Stable tag:** 1.0.1
 **Requires PHP:** 7.4
 **License:** GPLv2 or later  
 **License URI:** [GNU General Public License, version 2](https://www.gnu.org/licenses/gpl-2.0.html)
@@ -53,6 +53,9 @@ Monnify supports a wide range of payment methods, including credit/debit card pa
    ![Screenshot 3](assets/screenshot-2.png)
 
 ## Changelog
+
+### 1.0.1
+- Added webhook enhancement to allow asynchronous order confirmation in case of network failure
 
 ### 1.0.0
 

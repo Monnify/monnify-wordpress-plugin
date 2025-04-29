@@ -3,7 +3,7 @@ Contributors: jimiejosh, marvelous-benji, oresho
 Tags: payment gateway, monnify, e-commerce, woocommerce, nigeria
 Requires at least: 5.6
 Tested up to: 6.8
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -49,6 +49,9 @@ Monnify supports credit/debit card payments, USSD, Pay with Phone, Bank transfer
 3. Configuration settings for Monnify payment gateway
 
 == Changelog ==
+
+= 1.0.1 =
+* Added webhook enhancement to allow asynchronous order confirmation in case of network failure
 
 = 1.0.0 =
 * Initial release of the Monnify Official Payment Gateway Plugin
