@@ -5,15 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class WC_Monnify_Gateway extends WC_Payment_Gateway {
-
-    // public $monnify_test_mode;
-    // public $monnify_public_key;
-    // public $monnify_public_key_test;
-    // public $monnify_secret_key;
-    // public $monnify_secret_key_test;
-    // public $monnify_contract_code;
-    // public $monnify_contract_code_test; 
-
     /**
      * Monnify testmode.
      *
@@ -127,7 +118,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
         add_action('woocommerce_available_payment_gateways', array($this, 'add_gateway_to_checkout'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-        add_action('woocommerce_api_wc_monnify_gateway', array($this, 'monnify_trans_verify_payment'));
+        add_action('woocommerce_api_wc_monnify_gateway', array($this, 'handle_webhook'));
     }
 
     /**
@@ -155,6 +146,20 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
                 'type'        => 'textarea',
                 'description' => 'This controls the description which the user sees during checkout.',
                 'default'     => 'Pay securely using Monnify Payment.',
+            ),
+            'webhook_url' => array(
+                'title'       => 'Webhook URL',
+                'type'        => 'text',
+                'description' => sprintf(
+                    // translators: %s is the link to the Monnify dashboard
+                    __('Copy this URL and set it as your webhook endpoint for Transaction Completion on your <a href="%s" target="_blank">Monnify dashboard</a>.', 'monnify-official'),
+                    'https://app.monnify.com'
+                ),
+                'default'     => $this->get_webhook_url(),
+                'custom_attributes' => array(
+                    'readonly' => 'readonly',
+                    'id'       => 'monnify-webhook-url'
+                ),
             ),
             'monnify_test_mode' => array(
                 'title'       => 'Test Mode',
@@ -313,12 +318,13 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             'last_name'        => '',
             'phone'            => '', 
             'monnify_nonce'    => $nonce,
+            'cart_url'         => wc_get_cart_url(),
         );
 
         if (is_checkout_pay_page() && get_query_var('order-pay') && $order->get_id() === $order_id && $order->get_order_key() === $order_key) {
             $monnify_params['email']        = method_exists($order, 'get_billing_email') ? $order->get_billing_email() : $order->billing_email;
             $monnify_params['amount']       = $order->get_total();
-            $monnify_params['txnref']       = "MNFY_WP_" . $order_id . '_' . time();
+            $monnify_params['txnref']       = "MNFY_WP_{$order_id}_" . time() . '_' . wp_rand(1000, 9999);
             $monnify_params['currency']     = method_exists($order, 'get_currency') ? $order->get_currency() : $order->order_currency;
             $monnify_params['first_name']   = $order->get_billing_first_name();
             $monnify_params['last_name']    = $order->get_billing_last_name();
@@ -330,7 +336,6 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         wp_localize_script('wc_monnify', 'woo_monnify_params', $monnify_params);
     }
 
-      
     /**
      * Display Monnify payment icon.
      */
@@ -352,13 +357,143 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
 
         echo '<div id="seye">' . esc_html__('Thank you for your order, please click the button below to pay with Monnify.', 'monnify-official') . '</div>';
 
-        echo '<div id="monnify_form"><form id="order_review" method="post" action="' . esc_url(WC()->api_request_url('WC_Monnify_Gateway')) . '"></form><button class="button alt" id="monnify-official-button">' . esc_html__('Pay Now', 'monnify-official') . '</button>';
- 
+        echo '<div id="monnify_form"><form id="order_review" method="post" action="' . esc_url(WC()->api_request_url('WC_Monnify_Gateway')) . '"></form><button class="button alt" id="wc-monnify-official-button">' . esc_html__('Pay Now', 'monnify-official') . '</button>';
     }
 
     /**
-     * Verify Monnify webhook payment
+     * Webhook URL getter
      */
+    public function get_webhook_url() {
+        return add_query_arg('wc-api', 'wc_monnify_gateway', home_url('/'));
+    }
+
+    /**
+     * Handle Monnify webhook notifications
+     */
+    public function handle_webhook() {
+        $logger = wc_get_logger();
+        $context = ['source' => 'monnify-webhook'];
+        
+        // Verify this is a webhook call
+        if (!isset($_SERVER['HTTP_MONNIFY_SIGNATURE'])) {
+            $logger->info('Non-webhook request received', $context);
+            $this->monnify_trans_verify_payment(); // Fallback to original verification
+            return;
+        }
+
+        try {
+            // Get and validate payload
+            $payload = file_get_contents('php://input');
+            $signature = sanitize_text_field(wp_unslash($_SERVER['HTTP_MONNIFY_SIGNATURE']));
+            
+            if (!$this->validate_webhook($payload, $signature)) {
+                throw new Exception('Webhook validation failed');
+            }
+            
+            $data = json_decode($payload, true);
+            $event_type = $data['eventType'] ?? '';
+            $event_data = $data['eventData'] ?? [];
+            
+            // Process based on event type
+            switch ($event_type) {
+                case 'SUCCESSFUL_TRANSACTION':
+                    $this->process_successful_webhook($event_data);
+                    break;
+                    
+                default:
+                    $logger->warning("Unhandled webhook event: $event_type", $context);
+                    break;
+            }
+            
+            // Return success response
+            http_response_code(200);
+            exit;
+            
+        } catch (Exception $e) {
+            $logger->error('Webhook processing failed: ' . $e->getMessage(), $context);
+            http_response_code(400);
+            exit;
+        }
+    }
+
+    /**
+     * Validate webhook signature
+     */
+    private function validate_webhook($payload, $signature) {
+        $computed_signature = hash_hmac('sha512', $payload, $this->monnify_secret);
+        return hash_equals($computed_signature, $signature);
+    }
+
+    /**
+     * Process successful payment webhook
+     */
+    private function process_successful_webhook($data) {
+        $logger = wc_get_logger();
+        $context = ['source' => 'monnify-webhook'];
+        
+        $transaction_reference = $data['transactionReference'] ?? '';
+        $payment_reference = $data['paymentReference'] ?? '';
+        $amount_paid = $data['amountPaid'] ?? 0;
+        
+        // Find order by reference
+        $order_id = $this->get_order_id_by_reference($payment_reference);
+        $logger->info("Processing webhook notification for Order with reference: $payment_reference and transaction reference: $transaction_reference", $context);
+
+        if (!$order_id) {
+            throw new Exception('Order not found for reference: ' . esc_html($payment_reference));
+        }
+        
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            throw new Exception('Invalid order ID: ' . esc_html($order_id));
+        }
+        
+        // Check if already processed
+        if (strtolower($order->get_status()) === 'completed') {
+            $logger->info("Order #$order_id already completed", $context);
+            return;
+        }
+        
+        // Verify amount
+        $order_amount = $order->get_total();
+        
+        if ($amount_paid < $order_amount) {
+            $logger->info('Partial payment received. Paid: ' . $amount_paid . ', Expected: ' . $order_amount . '. Reference: ' . $transaction_reference, $context);
+            $message = sprintf(
+                // translators: %1$s is the paid amount, %2$s is order amount
+                __('Partial payment received. Paid: %1$s, Expected: %2$s', 'monnify-official'),
+                wc_price($amount_paid),
+                wc_price($order_amount)
+            );
+            $order->update_status('on-hold', $message);
+            $order->add_order_note($message);
+            return;
+        }
+        elseif ($amount_paid > $order_amount) {
+            $logger->info('Over-payment received. Paid: ' . $amount_paid . ', Expected: ' . $order_amount . '. Reference: ' . $transaction_reference, $context);
+            $message = sprintf(
+                // translators: %1$s is the paid amount, %2$s is order amount
+                __('Over-payment received. Paid: %1$s, Expected: %2$s', 'monnify-official'),
+                wc_price($amount_paid),
+                wc_price($order_amount)
+            );
+            $order->add_order_note($message);
+        }
+
+        // Complete payment
+        $this->complete_order($order, $transaction_reference);
+        
+        $logger->info("Successfully processed payment for order #$order_id", $context);
+    }
+
+    /**
+     * Find WooCommerce order by Monnify reference
+     */
+    private function get_order_id_by_reference($reference) {
+        // Extract order ID from reference, expected format MNFY_WP_{order_id}_{timestamp}
+        $parts = explode('_', $reference);
+        return absint($parts[2]);
+    }
 
     /**
      * Verify Monnify payment and update order status
@@ -393,8 +528,66 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             if (!wp_verify_nonce($nonce, 'monnify_verify_payment_' . $order_id)) {
                 throw new Exception('Security check failed - invalid nonce');
             }
+                  
+            if ($mnfy_reference === 'undefined') {
+                throw new Exception('Missing Monnify transaction reference');
+            }
 
             $logger->info("Starting verification for order #$order_id, reference: $mnfy_reference", $context);
+
+            // Check if already processed
+            if (strtolower($order->get_status()) === 'completed') {
+                $logger->info("Order #$order_id already completed", $context);
+                wp_redirect($this->get_return_url($order));
+                exit;
+            }
+
+            if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'overpaid' && isset($_GET['amount_paid'])) {
+                $paid_amount = absint(sanitize_text_field(wp_unslash($_GET['amount_paid'])));
+                $order_amount = $order->get_total();
+                $logger->info('Over-payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $mnfy_reference, $context);
+                $message = sprintf(
+                    // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
+                    __('Over-payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
+                    wc_price($paid_amount),
+                    wc_price($order_amount),
+                    $mnfy_reference
+                );
+                $order->add_order_note($message);
+
+                $logger->info("Payment call back status is overpaid, completing order for ref $mnfy_reference", $context);
+                $this->complete_order($order, $mnfy_reference);
+                wp_redirect($this->get_return_url($order));
+                exit;
+            }
+
+            else if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'partially_paid' && isset($_GET['amount_paid'])) {
+                $paid_amount = absint(sanitize_text_field(wp_unslash($_GET['amount_paid'])));
+                $order_amount = $order->get_total();
+                $logger->info('Partial payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $mnfy_reference, $context);
+                $message = sprintf(
+                    // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
+                    __('Partial payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
+                    wc_price($paid_amount),
+                    wc_price($order_amount),
+                    $mnfy_reference
+                );
+
+                $order->update_status('on-hold', $message);
+                $order->add_order_note($message);
+                
+                $logger->info("Payment call back status is partially_paid, setting order on-hold for merchant review: $mnfy_reference", $context);
+                wp_redirect($this->get_return_url($order));
+                exit;
+            }
+
+            // Check for direct success confirmation
+            else if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'paid') {
+                $logger->info("Payment call back status is paid, completing order for ref $mnfy_reference", $context);
+                $this->complete_order($order, $mnfy_reference);
+                wp_redirect($this->get_return_url($order));
+                exit;
+            }
 
             // 2. Get authentication token from Monnify
             $auth_token = $this->get_monnify_auth_token();
@@ -403,13 +596,13 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             }
 
             // 3. Verify transaction status with Monnify
-            $transaction = $this->verify_monnify_transaction($mnfy_reference, $auth_token);
-            if (!$transaction) {
+            $transaction_response = $this->verify_monnify_transaction($mnfy_reference, $auth_token);
+            if (!$transaction_response) {
                 throw new Exception('Failed to verify transaction status');
             }
 
             // 4. Handle payment status
-            $this->handle_payment_status($order, $mnfy_reference, $transaction);
+            $this->handle_payment_status($order, $mnfy_reference, $transaction_response);
 
             // 5. Redirect to thank you page
             wp_redirect($this->get_return_url($order));
@@ -418,12 +611,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         } catch (Exception $e) {
             $logger->error('Verification failed: ' . $e->getMessage(), $context);
             
-            if (isset($order) && is_a($order, 'WC_Order')) {
-                $order->update_status('on-hold', __('Payment verification failed: ', 'monnify-official') . $e->getMessage());
-                $order->add_order_note('Payment verification failed: ' . $e->getMessage());
-            }
-            
-            wc_add_notice(__('Payment verification failed. Please contact support.', 'monnify-official'), 'error');
+            wc_add_notice(__('Payment verification failed. Please contact support if your account was debited and your order status is not updated in a few minutes.', 'monnify-official'), 'error');
             wp_redirect(wc_get_checkout_url());
             exit;
         }
@@ -487,92 +675,88 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             return false;
         }
 
-        $response_code = wp_remote_retrieve_response_code($response);
-        if ($response_code !== 200) {
-            $logger->error("Transaction verification failed with code $response_code", $context);
-            return false;
-        }
-
         $body = json_decode(wp_remote_retrieve_body($response));
-        return $body->responseBody ?? false;
+        return $body ?? false;
     }
 
     /**
      * Handle payment status based on Monnify response
      */
-    private function handle_payment_status($order, $transaction_reference, $transaction) {
+    private function handle_payment_status($order, $transaction_reference, $transaction_response) {
         $logger = wc_get_logger();
         $context = ['source' => 'monnify-payment'];
+        $transaction = $transaction_response->responseBody;
         $payment_status = $transaction->paymentStatus ?? 'UNKNOWN';
+        $order_id = $order->get_id();
 
-        $logger->info("Processing payment status: $payment_status for order #" . $order->get_id(), $context);
+        $logger->info("Processing payment for order #$order_id", $context);
 
         switch (strtoupper($payment_status)) {
             case 'PAID':
+            case 'OVERPAID':
+            case 'PARTIALLY_PAID':
                 // Verify amount matches order total
                 $order_amount = $order->get_total();
                 $paid_amount = $transaction->amountPaid ?? 0;
                 
                 if ($paid_amount < $order_amount) {
+                    $logger->info('Partial payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $transaction_reference, $context);
                     $message = sprintf(
-                        // translators: %1$s is the paid amount, %2$s is order amount
-                        __('Partial payment received. Paid: %1$s, Expected: %2$s', 'monnify-official'),
+                        // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
+                        __('Partial payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
                         wc_price($paid_amount),
-                        wc_price($order_amount)
+                        wc_price($order_amount),
+                        $transaction_reference
                     );
                     $order->update_status('on-hold', $message);
                     $order->add_order_note($message);
                     break;
                 }
+                elseif ($paid_amount > $order_amount) {
+                    $logger->info('Over-payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $transaction_reference, $context);
+                    $message = sprintf(
+                        // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
+                        __('Over-payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
+                        wc_price($paid_amount),
+                        wc_price($order_amount),
+                        $transaction_reference
+                    );
+                    $order->add_order_note($message);
+                }
 
                 // Complete payment
-                $order->payment_complete($transaction_reference);
-                $order->update_status('completed');
-                
-                // Add order notes
-                $order->add_order_note(sprintf(
-                    // translators: %s is the Monnify transaction reference
-                    __('Payment via Monnify successful (Reference: %s)', 'monnify-official'),
-                    $transaction_reference
-                ));
-                
-                $customer_note = __('Thank you for your order. Your payment was successful and we are processing your order.', 'monnify-official');
-                $order->add_order_note($customer_note, 1);
-                
-                // Clear cart
-                WC()->cart->empty_cart();
+                $this->complete_order($order, $transaction_reference);
                 break;
 
             case 'PENDING':
-                $order->update_status('on-hold', __('Payment is pending confirmation from Monnify', 'monnify-official'));
-                $order->add_order_note(sprintf(
-                    // translators: %s is the Monnify transaction reference
-                    __('Monnify payment pending (Reference: %s)', 'monnify-official'),
-                    $transaction_reference
-                ));
-                break;
-
-            case 'FAILED':
-            case 'REVERSED':
-                $order->update_status('failed', __('Payment failed or was reversed', 'monnify-official'));
-                $order->add_order_note(sprintf(
-                    // translators: %1$s is the Monnify transaction reference, %2$s is the payment status
-                    __('Monnify payment failed (Reference: %1$s, Status: %2$s)', 'monnify-official'),
-                    $transaction_reference,
-                    $payment_status
-                ));
+                $logger->info('Transaction status still pending skipping', $context);
                 break;
 
             default:
-                $order->update_status('on-hold', __('Unknown payment status received from Monnify', 'monnify-official'));
-                $order->add_order_note(sprintf(
-                    // translators: %1$s is the Monnify transaction reference, %2$s is the payment status
-                    __('Unknown payment status from Monnify (Reference: %1$s, Status: %2$s)', 'monnify-official'),
-                    $transaction_reference,
-                    $payment_status
-                ));
+                $logger->warning("Payment not completed, current payment status from Monnify (Order ID: $order_id, Reference: $transaction_reference, Status: $payment_status)", $context);
                 break;
         }
+    }
+
+    private function complete_order( $order, $transaction_reference) {
+        // Complete payment
+        $order->payment_complete($transaction_reference);
+        $order->update_status('completed');
+        
+        // Add order notes
+        $order->add_order_note(sprintf(
+            // translators: %s is the Monnify transaction reference
+            __('Payment via Monnify successful (Reference: %s)', 'monnify-official'),
+            $transaction_reference
+        ));
+        
+        $customer_note = __('Thank you for your order. Your payment was successful and we are processing your order.', 'monnify-official');
+        $order->add_order_note($customer_note, 1);
+        
+        // Clear cart
+        if (is_user_logged_in()) {
+            WC()->cart->empty_cart();
+        }        
     }
 }
  

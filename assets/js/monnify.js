@@ -1,5 +1,6 @@
 function payWithMonnify({
   amount,
+  reference,
   customerName,
   customerEmail,
   customerMobileNumber,
@@ -7,10 +8,9 @@ function payWithMonnify({
   contractCode,
   paymentMethods,
   redirect_url,
-  currency
+  currency,
+  cart_url
 }) {
-
-  const reference = `${Math.floor(Math.random() * 1000000000 + 1)}`;
   
   MonnifySDK.initialize({
     amount,
@@ -25,23 +25,54 @@ function payWithMonnify({
     paymentMethods, // Use the selected payment methods here
     onLoadStart: () => {
       //console.log("Sdk load started");
-      // console.log(woo_monnify_params)
     },
     onLoadComplete: () => {
      //console.log("SDK is UP");
     },
     onComplete: function (response) {
-      const transactionReference = response.transactionReference;
-      window.location.href = `${redirect_url}&mnfy_reference=${transactionReference}`;
+      // const str = JSON.stringify(response, null, 4);
+      // console.log(str);
       jQuery("#wc-monnify-official-button").prop("disabled", true);
       jQuery("#cancel-btn").remove();
       jQuery("#seye").html(
-        `<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received">Please keep the page open while we process your order</p>`
+        `<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received">Your payment is being confirmed, please keep the page open while we process your order.</p>`
       );
+
+      if (response.paymentStatus && response.paymentStatus === 'OVERPAID') {
+        // Process payment as overpaid
+        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&amount_paid=${response.amountPaid}&payment_status=overpaid`;
+        window.location.href = successUrl;
+      }
+      else if (response.paymentStatus && response.paymentStatus === 'PARTIALLY_PAID') {
+        // Process payment as partially paid
+        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&amount_paid=${response.amountPaid}&payment_status=partially_paid`;
+        window.location.href = successUrl;
+      }
+      // Successful payment confirmed by SDK
+      else if (response.status === 'SUCCESS') {
+        // Immediately process successful payment
+        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&payment_status=paid`;
+        window.location.href = successUrl;
+      } else {
+        // Payment not confirmed, will verify via API
+        const verifyUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}`;
+        window.location.href = verifyUrl;
+      }
     },
     onClose: function (data) {
-      // Implement what should happen when the modal is closed here
-      // console.log(data);
+      // const str = JSON.stringify(data, null, 4);
+      // console.log(str);
+      // Payment modal closed without completion
+      if (data.paymentStatus === 'USER_CANCELLED') {
+        jQuery("#wc-monnify-official-button").prop("disabled", true);
+        jQuery("#seye").html(
+          `<p class="woocommerce-error">Your payment was not completed. You are being redirected to your cart to try again.</p>`
+        );
+
+        setTimeout(() => {
+          window.location.href = cart_url;
+        }, 3000);
+      }
     }
   });
 }
@@ -62,9 +93,11 @@ jQuery(function ($) {
           key,
           selectedPaymentMethods,
           contractCode,
+          txnref,
           testmode,
           mon_redirect_url,
-          currency
+          currency,
+          cart_url
         } = woo_monnify_params;
 
         const customerName = `${first_name} ${last_name}`;
@@ -73,6 +106,7 @@ jQuery(function ($) {
 
         payWithMonnify({
           amount: Number(amount),
+          reference: txnref, // use the generated wp reference
           customerName,
           customerEmail,
           customerMobileNumber,
@@ -80,7 +114,8 @@ jQuery(function ($) {
           contractCode,
           paymentMethods: selectedPaymentMethods , // Use the selected payment methods here,
           redirect_url: mon_redirect_url,
-          currency
+          currency,
+          cart_url
         });
       };
 
@@ -95,3 +130,4 @@ jQuery(function ($) {
 
   wc_monnify_payment.init();
 });
+
