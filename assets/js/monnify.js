@@ -38,26 +38,9 @@ function payWithMonnify({
         `<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received">Your payment is being confirmed, please keep the page open while we process your order.</p>`
       );
 
-      if (response.paymentStatus && response.paymentStatus === 'OVERPAID') {
-        // Process payment as overpaid
-        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&amount_paid=${response.amountPaid}&payment_status=overpaid`;
-        window.location.href = successUrl;
-      }
-      else if (response.paymentStatus && response.paymentStatus === 'PARTIALLY_PAID') {
-        // Process payment as partially paid
-        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&amount_paid=${response.amountPaid}&payment_status=partially_paid`;
-        window.location.href = successUrl;
-      }
-      // Successful payment confirmed by SDK
-      else if (response.status === 'SUCCESS') {
-        // Immediately process successful payment
-        const successUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}&payment_status=paid`;
-        window.location.href = successUrl;
-      } else {
-        // Payment not confirmed, will verify via API
-        const verifyUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}`;
-        window.location.href = verifyUrl;
-      }
+      // Payment not confirmed, will verify via API
+      const verifyUrl = `${redirect_url}&mnfy_reference=${response.transactionReference}`;
+      window.location.href = verifyUrl;
     },
     onClose: function (data) {
       // const str = JSON.stringify(data, null, 4);

@@ -542,53 +542,6 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
                 exit;
             }
 
-            if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'overpaid' && isset($_GET['amount_paid'])) {
-                $paid_amount = absint(sanitize_text_field(wp_unslash($_GET['amount_paid'])));
-                $order_amount = $order->get_total();
-                $logger->info('Over-payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $mnfy_reference, $context);
-                $message = sprintf(
-                    // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
-                    __('Over-payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
-                    wc_price($paid_amount),
-                    wc_price($order_amount),
-                    $mnfy_reference
-                );
-                $order->add_order_note($message);
-
-                $logger->info("Payment call back status is overpaid, completing order for ref $mnfy_reference", $context);
-                $this->complete_order($order, $mnfy_reference);
-                wp_redirect($this->get_return_url($order));
-                exit;
-            }
-
-            else if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'partially_paid' && isset($_GET['amount_paid'])) {
-                $paid_amount = absint(sanitize_text_field(wp_unslash($_GET['amount_paid'])));
-                $order_amount = $order->get_total();
-                $logger->info('Partial payment received. Paid: ' . $paid_amount . ', Expected: ' . $order_amount . '. Reference: ' . $mnfy_reference, $context);
-                $message = sprintf(
-                    // translators: %1$s is the paid amount, %2$s is order amount,  %3$s is the monnify transaction reference
-                    __('Partial payment received. Paid: %1$s, Expected: %2$s. Reference: %3$s', 'monnify-official'),
-                    wc_price($paid_amount),
-                    wc_price($order_amount),
-                    $mnfy_reference
-                );
-
-                $order->update_status('on-hold', $message);
-                $order->add_order_note($message);
-                
-                $logger->info("Payment call back status is partially_paid, setting order on-hold for merchant review: $mnfy_reference", $context);
-                wp_redirect($this->get_return_url($order));
-                exit;
-            }
-
-            // Check for direct success confirmation
-            else if (isset($_GET['payment_status']) && $_GET['payment_status'] === 'paid') {
-                $logger->info("Payment call back status is paid, completing order for ref $mnfy_reference", $context);
-                $this->complete_order($order, $mnfy_reference);
-                wp_redirect($this->get_return_url($order));
-                exit;
-            }
-
             // 2. Get authentication token from Monnify
             $auth_token = $this->get_monnify_auth_token();
             if (!$auth_token) {
