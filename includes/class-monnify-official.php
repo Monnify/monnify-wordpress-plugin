@@ -331,7 +331,13 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             $monnify_params['phone']        = $order->get_billing_phone();
         }
 
-        update_post_meta($order_id, '_monnify_txn_ref', $monnify_params['txnref']);
+        // update_post_meta($order_id, '_monnify_txn_ref', $monnify_params['txnref']);
+        $existing_refs = get_post_meta($order_id, '_monnify_txn_refs', true);
+        if (!is_array($existing_refs)) {
+            $existing_refs = [];
+        }
+        $existing_refs[] = $monnify_params['txnref'];
+        update_post_meta($order_id, '_monnify_txn_refs', $existing_refs);
 
         wp_localize_script('wc_monnify', 'woo_monnify_params', $monnify_params);
     }
@@ -552,6 +558,13 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             $transaction_response = $this->verify_monnify_transaction($mnfy_reference, $auth_token);
             if (!$transaction_response) {
                 throw new Exception('Failed to verify transaction status');
+            }
+
+            // 3.5 Does this payment reference exist for this order??
+            $payment_references = get_post_meta($order_id, '_monnify_txn_refs', true);
+            $payment_reference = $transaction_response->responseBody->paymentReference;
+            if (!is_array($payment_references) || !in_array($payment_reference, $payment_references, true) || $this->get_order_id_by_reference($payment_reference) !== $order_id) {
+                throw new Exception('This payment reference is not for this order');
             }
 
             // 4. Handle payment status
