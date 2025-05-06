@@ -2,7 +2,7 @@ const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
 const { createElement } = window.wp.element;
 const { __ } = window.wp.i18n;
 
-const logoUrl = window.wc_monnify_params?.logo_url || 'https://monnify.com/assets/img/svg/site-logo.svg';
+const logoUrl = window.wc_monnify_params?.logo_url;
 
 const MonnifyOptions = {
     name: 'monnify',
