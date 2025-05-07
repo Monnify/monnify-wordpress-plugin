@@ -1,15 +1,15 @@
 <?php
 /**
- * Plugin Name: Monnify Official Payment Gateway
+ * Plugin Name: Monnify Official
  * Plugin URI: https://github.com/Monnify/monnify-wordpress-plugin
- * Description: Monnify Official Payment Plugin allows you to integrate Monnify Payment to your WordPress Website. Supports various Monnify payment method options such as Pay with Transfer, Pay with Card, Pay with USSD, Pay with Phone Number.
+ * Description: Monnify Official Plugin allows you to integrate Monnify Payment to your WordPress Website. Supports various Monnify payment method options such as Pay with Transfer, Pay with Card, Pay with USSD, Pay with Phone Number.
  * Author: Monnify Integrations Team
  * Author URI: https://monnify.com
  * Version: 1.0.1
  * Text Domain: monnify-official
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- * Monnify Official Payment Gateway plugin provides a seamless payment experience for your customers on your WordPress website. 
+ * Monnify Official plugin provides a seamless payment experience for your customers on your WordPress website. 
 
  */
 

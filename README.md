@@ -1,48 +1,51 @@
-# Monnify Official Payment Gateway
+# Monnify Official
 
-**Contributors:** jimiejosh, marvelous-benji, oresho
-**Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria, africa, card, bank transfer 
-**Requires at least:** 5.6
-**Tested up to:** 6.8
-**Stable tag:** 1.0.1
-**Requires PHP:** 7.4
+**Contributors:** monnify  
+**Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria  
+**Requires at least:** 5.6  
+**Tested up to:** 6.8  
+**Stable tag:** 1.0.1  
+**Requires PHP:** 7.4  
 **License:** GPLv2 or later  
-**License URI:** [GNU General Public License, version 2](https://www.gnu.org/licenses/gpl-2.0.html)
-Monnify Official Payment Gateway plugin provides a seamless payment experience for your customers on your WordPress website. 
+**License URI:** [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html)  
 
-## Description
+Monnify Official plugin provides a seamless payment experience for your customers on your WordPress website.
 
-Monnify Official Payment Gateway Plugin enables seamless integration of Monnify, a reliable and secure payment gateway, into your WordPress e-commerce website. With Monnify, you can accept payments from various payment methods and provide your customers with a smooth and secure checkout experience.
+## Description  
+Monnify Official Payment Gateway enables seamless integration of Monnify, a reliable and secure payment gateway, into your WordPress e-commerce website. With Monnify, you can accept payments from various payment methods and provide your customers with a smooth and secure checkout experience.
 
-**Key features include:**
-- Easy setup and configuration.
-- Support for multiple payment methods, including card payments and bank transfers.
-- Real-time transaction monitoring and reporting.
-- Enhanced security features to protect your customers' data.
-- Seamless integration with popular e-commerce plugins.
-- Supports WooCommerce block checkout
+### Key features include:  
+- Easy setup and configuration  
+- Support for multiple payment methods including card payments and bank transfers  
+- Real-time transaction monitoring and reporting  
+- Enhanced security features to protect your customers' data  
+- Seamless integration with popular e-commerce plugins  
+- Supports WooCommerce block checkout  
 
-Whether you're running a small online store or a large e-commerce platform, Monnify Official Payment Gateway Plugin is the ideal solution for accepting payments and managing transactions with ease.
+Whether you're running a small online store or a large e-commerce platform, Monnify Official Plugin is the ideal solution for accepting payments and managing transactions with ease.
 
-## Frequently Asked Questions
+## Installation  
+1. Install the plugin via the WordPress plugin installer.  
+2. Activate the plugin through the **Plugins** menu.  
+3. Navigate to **WooCommerce → Settings → Payments → Monnify**.  
+4. Configure your API credentials and payment methods.  
 
-**Q: How do I install and configure the Monnify Official Payment Gateway Plugin?**
+## Frequently Asked Questions  
 
-1. Install the plugin via the WordPress plugin installer.
-2. Activate the plugin through the 'Plugins' menu
-3. Navigate to the plugin settings.
-4. Select 'Enable Test Mode' if you would like to make test payments.
-5. Enter your Monnify API credentials
-6. Select the payment methods you would like to support, Hold "SHIFT" to select multiple (Works only in Live Mode).
+### How do I install and configure the plugin?  
+1. Install the plugin via the WordPress plugin installer.  
+2. Activate the plugin through the **Plugins** menu.  
+3. Navigate to the plugin settings.  
+4. Select **Enable Test Mode** if you would like to make test payments.  
+5. Enter your Monnify API credentials.  
+6. Select the payment methods you would like to support (hold `SHIFT` to select multiple in Live Mode).  
 
-For detailed instructions, please refer to monnify documentation, https://developers.monnify.com/docs/integration-tools/plugin-libraries
+For detailed instructions, please refer to the [Monnify documentation](https://developers.monnify.com/docs/integration-tools/plugin-libraries).  
 
-**Q: What payment methods does Monnify support?**
+### What payment methods does Monnify support?  
+Monnify supports credit/debit card payments, USSD, Pay with Phone, Bank transfers, and more. Configure your preferred methods in the plugin settings.  
 
-Monnify supports a wide range of payment methods, including credit/debit card payments, USSD, Pay with Phone,Bank transfers etc. You can configure the payment methods you want to offer to your customers in the plugin settings.
-
-## Screenshots
-
+## Screenshots  
 1. Plugin settings screen
    ![Screenshot 1](assets/screenshot-3.png)
 
@@ -52,20 +55,31 @@ Monnify supports a wide range of payment methods, including credit/debit card pa
 3. Configuration settings for Monnify payment gateway.
    ![Screenshot 3](assets/screenshot-2.png)
 
-## Changelog
+## External Services  
+This plugin connects to Monnify’s external payment gateway API to securely process payments made through the WooCommerce checkout page. It uses Monnify’s JavaScript SDK to initiate and manage payment transactions.  
 
-### 1.0.1
-- Added webhook enhancement to allow asynchronous order confirmation in case of network failure
+**What data is sent and when:**  
+When a customer initiates payment at checkout, the plugin loads the Monnify JavaScript SDK (`https://sdk.monnify.com/plugin/monnify.js`) and sends necessary transaction details (amount, customer name, email, transaction reference) to Monnify's API.  
 
-### 1.0.0
+**Why this data is sent:**  
+To facilitate real-time payment processing via Monnify's secure infrastructure.  
 
-- Initial release of the Monnify Official Payment Gateway Plugin.
-- Supports WooCommerce block checkout.
+**Service provider:**  
+- [Monnify Terms of Service](https://monnify.com/terms.html)  
+- [Monnify Privacy Policy](https://monnify.com/privacy-policy.html)  
 
-## Upgrade Notice
+## Changelog  
 
-### 1.0.0
+### 1.0.1  
+- Added webhook enhancement to allow asynchronous order confirmation in case of network failure.  
 
-Upgrade to version 1.0.0 to start accepting payments through Monnify using the WooCommerce block checkout and enhance the payment experience for your customers.
+### 1.0.0  
+- Initial release of the Monnify Official Payment Gateway Plugin.  
+- Added support for WooCommerce block checkout.  
+
+## Upgrade Notice  
+
+### 1.0.0  
+Upgrade to version 1.0.0 to start accepting payments through Monnify using the WooCommerce block checkout.  
 
 ---
