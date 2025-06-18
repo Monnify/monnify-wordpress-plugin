@@ -388,12 +388,24 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         }
 
         try {
+            // IP Whitelist - Verify IP address against monnify IP  35.242.133.146
+            $ip = '';
+            if (isset($_SERVER['REMOTE_ADDR'])) {
+                $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR']));
+                $logger->info('REMOTE_ADDR - ' . $ip , $context);
+            } elseif (isset($_SERVER['REMOTE_HOST'])) {
+                $ip = sanitize_text_field(wp_unslash($_SERVER['REMOTE_HOST']));
+                $logger->info('REMOTE_HOST - ' . $ip , $context);
+            }
+            
+            if( $ip != "35.242.133.146") throw new Exception('Webhook validation failed, invalid source IP address');
+            
             // Get and validate payload
             $payload = file_get_contents('php://input');
             $signature = sanitize_text_field(wp_unslash($_SERVER['HTTP_MONNIFY_SIGNATURE']));
             
             if (!$this->validate_webhook($payload, $signature)) {
-                throw new Exception('Webhook validation failed');
+                throw new Exception('Webhook validation failed, invalid signature');
             }
             
             $data = json_decode($payload, true);
