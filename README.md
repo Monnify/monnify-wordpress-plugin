@@ -70,6 +70,9 @@ To facilitate real-time payment processing via Monnify's secure infrastructure.
 
 ## Changelog  
 
+### 1.0.2  
+- Added IP address verification to improve webhook security  
+
 ### 1.0.1  
 - Added webhook enhancement to allow asynchronous order confirmation in case of network failure.  
 
