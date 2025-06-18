@@ -4,7 +4,7 @@
 **Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria  
 **Requires at least:** 5.6  
 **Tested up to:** 6.8  
-**Stable tag:** 1.0.1  
+**Stable tag:** 1.0.2  
 **Requires PHP:** 7.4  
 **License:** GPLv2 or later  
 **License URI:** [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html)  
