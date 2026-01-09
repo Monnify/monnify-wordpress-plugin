@@ -3,16 +3,16 @@
 **Contributors:** monnify  
 **Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria  
 **Requires at least:** 5.6  
-**Tested up to:** 6.8  
-**Stable tag:** 1.0.2  
+**Tested up to:** 6.9  
+**Stable tag:** 1.0.3  
 **Requires PHP:** 7.4  
 **License:** GPLv2 or later  
 **License URI:** [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html)  
 
-Monnify Official plugin provides a seamless payment experience for your customers on your WordPress website.
+Monnify Official WooCommerce Payment Gateway plugin provides a seamless payment experience for your customers on your WordPress website.
 
 ## Description  
-Monnify Official Payment Gateway enables seamless integration of Monnify, a reliable and secure payment gateway, into your WordPress e-commerce website. With Monnify, you can accept payments from various payment methods and provide your customers with a smooth and secure checkout experience.
+Monnify Official WooCommerce Payment Gateway Plugin enables seamless integration to Monnify, a reliable and secure payment gateway, into your WordPress e-commerce website. With Monnify, you can accept payments through multiple payment methods, providing your customers with a smooth and secure checkout experience.
 
 ### Key features include:  
 - Easy setup and configuration  
@@ -21,6 +21,8 @@ Monnify Official Payment Gateway enables seamless integration of Monnify, a reli
 - Enhanced security features to protect your customers' data  
 - Seamless integration with popular e-commerce plugins  
 - Supports WooCommerce block checkout  
+- Compatible with both single-site and WordPress Multisite
+
 
 Whether you're running a small online store or a large e-commerce platform, Monnify Official Plugin is the ideal solution for accepting payments and managing transactions with ease.
 
@@ -70,6 +72,12 @@ To facilitate real-time payment processing via Monnify's secure infrastructure.
 
 ## Changelog  
 
+### 1.0.3 
+- Added support for WordPress Multisite (works on both network and individual sites)
+
+### 1.0.2  
+- Added IP address verification to improve webhook security  
+
 ### 1.0.1  
 - Added webhook enhancement to allow asynchronous order confirmation in case of network failure.  
 
@@ -79,7 +87,6 @@ To facilitate real-time payment processing via Monnify's secure infrastructure.
 
 ## Upgrade Notice  
 
-### 1.0.0  
-Upgrade to version 1.0.0 to start accepting payments through Monnify using the WooCommerce block checkout.  
+### 1.0.3  
+Upgrade to version 1.0.3 to start accepting payments through Monnify using the WooCommerce block checkout.  
 
----

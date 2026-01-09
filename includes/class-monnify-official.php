@@ -305,7 +305,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             'key'              => $this->monnify_api_key,
             'contractCode'     => $this->monnify_contract,
             'monnify_test_mode'=> $this->monnify_test_mode,
-            'mon_redirect_url'   => WC()->api_request_url('WC_Monnify_Gateway') . '&monnify_order_id=' . $order_id . '&monnify_nonce=' . $nonce,
+            'mon_redirect_url'   => esc_url_raw( add_query_arg( array('monnify_order_id' => $order_id, 'monnify_nonce' => $nonce,), WC()->api_request_url( 'WC_Monnify_Gateway' ) ) ),
             'email'            => '',
             'amount'           => '',
             'txnref'           => '',

@@ -1,15 +1,15 @@
 <?php
 /**
- * Plugin Name: Monnify Official
+ * Plugin Name: Monnify Official WooCommerce Payment Gateway
  * Plugin URI: https://github.com/Monnify/monnify-wordpress-plugin
- * Description: Monnify Official Plugin allows you to integrate Monnify Payment to your WordPress Website. Supports various Monnify payment method options such as Pay with Transfer, Pay with Card, Pay with USSD, Pay with Phone Number.
+ * Description: Monnify Official WooCommerce Payment Gateway allows you to integrate Monnify Payment to your WordPress Website. Supports various Monnify payment method options such as Pay with Transfer, Pay with Card, Pay with USSD, Pay with Phone Number.
  * Author: Monnify Integrations Team
  * Author URI: https://monnify.com
- * Version: 1.0.2
+ * Version: 1.0.3
  * Text Domain: monnify-official
  * License: GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- * Monnify Official plugin provides a seamless payment experience for your customers on your WordPress website. 
+ * Monnify Official WooCommerce Payment Gateway provides a seamless payment experience for your customers on your WordPress website. 
 
  */
 
@@ -21,11 +21,8 @@ define("WC_MONNIFY_VERSION", "1.0.2");
 define('WC_MONNIFY_MAIN_FILE', __FILE__);
 define('WC_MONNIFY_URL', untrailingslashit(plugins_url('/', __FILE__)));
 
-// Make sure WooCommerce is active
-if (!in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-    add_action('admin_notices', 'monnify_woocommerce_notice');
-    return;
-}
+
+add_action( 'admin_init', 'monnify_validate_installed_woocommerce' );
 
 /*
  * This action hook registers our PHP class as a WooCommerce payment gateway
@@ -61,13 +58,25 @@ function monnify_woocommerce_notice()
     }
 }
 
-function monnify_validate_installed_woocommerce()
+
+    function monnify_validate_installed_woocommerce()
 {
-    if (!class_exists('WooCommerce') || !in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-        add_action('admin_notices', 'monnify_no_woocommerce_notice');
+    if ( ! function_exists( 'is_plugin_active' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    }
+
+    if (
+        class_exists( 'WooCommerce' )
+        || ( function_exists( 'is_plugin_active' ) && is_plugin_active( 'woocommerce/woocommerce.php' ) )
+        || ( function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( 'woocommerce/woocommerce.php' ) )
+    ) {
         return;
     }
+
+    add_action( 'admin_notices', 'monnify_woocommerce_notice' );
 }
+
+    
 
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'monnify_add_links_to_plugin_page');
 
