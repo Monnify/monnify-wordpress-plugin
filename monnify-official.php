@@ -17,7 +17,7 @@ if (!defined('ABSPATH') ) {
     exit;
 }
 
-define("WC_MONNIFY_VERSION", "1.0.2");
+define("WC_MONNIFY_VERSION", "1.0.3");
 define('WC_MONNIFY_MAIN_FILE', __FILE__);
 define('WC_MONNIFY_URL', untrailingslashit(plugins_url('/', __FILE__)));
 
