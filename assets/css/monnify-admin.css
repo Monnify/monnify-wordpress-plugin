@@ -1,0 +1,43 @@
+#woocommerce_monnify_split_payments_rows {
+    display: none !important;
+}
+
+#monnify-split-wrapper {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #e1e1e1;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+#monnify-split-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+#monnify-split-wrapper th,
+#monnify-split-wrapper td {
+    padding: 10px 12px;
+    text-align: left;
+}
+
+#monnify-split-wrapper th {
+    background-color: #f1f1f1;
+    font-weight: 600;
+}
+
+#monnify-add-split-row {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background-color: #0071a1; /* WooCommerce blue */
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#monnify-add-split-row:hover {
+    background-color: #005a7a;
+}
+

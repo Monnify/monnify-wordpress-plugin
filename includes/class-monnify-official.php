@@ -119,6 +119,9 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         add_action('woocommerce_available_payment_gateways', array($this, 'add_gateway_to_checkout'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_wc_monnify_gateway', array($this, 'handle_webhook'));
+
+        add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+
     }
 
     /**
@@ -217,7 +220,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
             'payment_methods' => array(
                 'title'       => 'Supported Payment Methods',
                 'type'        => 'multiselect',
-                'description' => 'Select the payment methods you want to support. Hold "SHIFT" to select multiple. Works only in Live Mode.',
+                'description' => 'Select the payment methods you want to support. Hold "SHIFT" to select multiple. ',
                 'default'     => array('CARD', 'ACCOUNT_TRANSFER', 'USSD', 'PHONE_NUMBER'),
                 'options'     => array(
                     'CARD'            => 'Card',
@@ -226,7 +229,202 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
                     'PHONE_NUMBER'    => 'Phone Number',
                 ),
             ),
+                 'split_payment_enabled' => array(
+                'title'   => 'Split Payments',
+                'type'    => 'checkbox',
+                'label'   => 'Enable Split Payments',
+                'default' => 'no',
+                'id'      => 'split_payment_enabled',
+            ),
+            'split_payments_rows' => array(
+                'title' => 'Split Configuration',
+                'type'  => 'custom_html',
+                'description' => '
+                    <div id="monnify-split-wrapper" style="display:none;">
+                        <table id="monnify-split-table" class="widefat">
+                            <thead>
+                                <tr>
+                                    <th>Sub Account Code</th>
+                                    <th>Split Type</th>
+                                    <th class="monnify-split-value-header">Split Value</th>
+                                    <th>Fee Bearer</th>
+                                    <th>Fee %</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="button" id="monnify-add-split-row">
+                            Add Sub Account
+                        </button>
+                    </div>',
+            ),
         );
+    }
+
+        /**
+     * Save split rows
+     */
+public function process_admin_options() {
+    parent::process_admin_options();
+
+    $logger = wc_get_logger();
+    $context = array( 'source' => 'monnify-admin-split' );
+
+    // Helper to read arrays (top-level or inside woocommerce_monnify)
+    $get_post_array = function( $key ) {
+        if ( isset( $_POST[ $key ] ) && is_array( $_POST[ $key ] ) ) {
+            return wp_unslash( $_POST[ $key ] );
+        }
+        if ( isset( $_POST['woocommerce_monnify'] ) && is_array( $_POST['woocommerce_monnify'] ) && isset( $_POST['woocommerce_monnify'][ $key ] ) && is_array( $_POST['woocommerce_monnify'][ $key ] ) ) {
+            return wp_unslash( $_POST['woocommerce_monnify'][ $key ] );
+        }
+        return array();
+    };
+
+    // Read posted arrays (tolerant to nesting)
+    $raw_subaccounts = $get_post_array( 'monnify_subAccountCode' );
+    $raw_fees        = $get_post_array( 'monnify_feePercentage' );
+    $raw_types       = $get_post_array( 'monnify_splitType' );
+    $raw_values      = $get_post_array( 'monnify_splitValue' );
+    $raw_bearers     = $get_post_array( 'monnify_feeBearer' );
+
+    // Normalize fee-bearer array if it contains duplicate values due to hidden+checkbox submission
+    if ( is_array( $raw_bearers ) && is_array( $raw_subaccounts ) ) {
+        $countRows = count( $raw_subaccounts );
+        // If length matches rows, good. If length is greater (e.g. hidden+checkbox for checked rows), collapse.
+        if ( count( $raw_bearers ) !== $countRows ) {
+            $normalized = array();
+            // iterate rows and try to pick a single value per row
+            $pos = 0;
+            for ( $i = 0; $i < $countRows; $i++ ) {
+                // prefer a later '1' if present; otherwise take first available
+                $val = '0';
+                if ( isset( $raw_bearers[ $pos ] ) ) {
+                    $val = $raw_bearers[ $pos ];
+                }
+                // look ahead a bit for a '1' (checkbox), up to 2 entries ahead
+                if ( isset( $raw_bearers[ $pos + 1 ] ) && (string) $raw_bearers[ $pos + 1 ] === '1' ) {
+                    $val = '1';
+                    $pos += 2;
+                } else {
+                    $pos += 1;
+                }
+                $normalized[] = $val;
+            }
+            // fallback: if normalized length mismatches, pad/truncate
+            if ( count( $normalized ) !== $countRows ) {
+                $normalized = array_slice( array_pad( $normalized, $countRows, '0' ), 0, $countRows );
+            }
+            $raw_bearers = $normalized;
+        }
+    } else {
+        $raw_bearers = array();
+    }
+
+    $split_rows = array();
+    $total_percentage = 0.0;
+    $total_fee_bearer_percentage = 0.0;
+
+    foreach ( $raw_subaccounts as $index => $code ) {
+        $code = sanitize_text_field( $code );
+        if ( $code === '' ) {
+            continue;
+        }
+
+        $fee_raw = isset( $raw_fees[ $index ] ) ? $raw_fees[ $index ] : '';
+        $fee     = is_numeric( $fee_raw ) ? floatval( $fee_raw ) : 0.0;
+        $fee = max(0, min(100, $fee)); // clamp
+
+        $type_raw = isset( $raw_types[ $index ] ) ? $raw_types[ $index ] : 'percentage';
+        $type     = in_array( $type_raw, array( 'percentage', 'amount' ), true ) ? $type_raw : 'percentage';
+
+        $value_raw = isset( $raw_values[ $index ] ) ? $raw_values[ $index ] : '';
+        $value     = is_numeric( $value_raw ) ? floatval( $value_raw ) : 0.0;
+
+        $bearer_raw = isset( $raw_bearers[ $index ] ) ? $raw_bearers[ $index ] : '0';
+        $fee_bearer = (string) $bearer_raw === '1' ? true : false;
+
+        $row = array(
+            'subAccountCode' => $code,
+            'feePercentage'  => $fee,
+            'feeBearer'      => $fee_bearer,
+        );
+
+        if ( $type === 'amount' ) {
+            $row['splitAmount'] = $value;
+        } else {
+            $value = max(0, min(100, $value));
+            $row['splitPercentage'] = $value;
+            $total_percentage += $value;
+        }
+
+        if ( $fee_bearer ) {
+            $total_fee_bearer_percentage += $fee;
+        }
+
+        $split_rows[] = $row;
+    }
+
+    // server-side total checks
+    if ( $total_percentage > 100.00001 ) {
+        // preserve submitted rows so the admin UI can re-render the user's input
+        set_transient( 'monnify_split_payments_preview', $split_rows, 300 );
+        $message = sprintf( 'Total split percentage is %.2f%% which exceeds 100%%. Split configuration not saved.', $total_percentage );
+        add_settings_error( 'woocommerce_monnify', 'monnify_split_total_exceeds', $message, 'error' );
+        return;
+    }
+
+    if ( $total_fee_bearer_percentage > 100.00001 ) {
+        // preserve submitted rows so the admin UI can re-render the user's input
+        set_transient( 'monnify_split_payments_preview', $split_rows, 300 );
+        $message = sprintf( 'Total fee percentage for fee-bearers is %.2f%% which exceeds 100%%. Split configuration not saved.', $total_fee_bearer_percentage );
+        add_settings_error( 'woocommerce_monnify', 'monnify_fee_bearer_total_exceeds', $message, 'error' );
+        return;
+    }
+
+    update_option( 'monnify_split_payments', $split_rows );
+    // clear any previous preview on success
+    delete_transient( 'monnify_split_payments_preview' );
+    $logger->info( 'Saved monnify_split_payments rows: ' . wp_json_encode( $split_rows ), $context );
+}
+
+
+        /**
+     * Admin JS
+     */
+    public function enqueue_admin_scripts($hook) {
+
+        if ($hook !== 'woocommerce_page_wc-settings') {
+            return;
+        }
+
+        wp_enqueue_style(
+        'monnify-admin',
+        plugins_url('assets/css/monnify-admin.css', WC_MONNIFY_MAIN_FILE),
+        array(),
+        WC_MONNIFY_VERSION
+        );
+
+        wp_enqueue_script(
+            'monnify-admin-split',
+            plugins_url('assets/js/monnify-admin-split.js', WC_MONNIFY_MAIN_FILE),
+            array('jquery'),
+            '1.0',
+            true
+        );
+
+        wp_localize_script(
+            'monnify-admin-split',
+            'monnify_saved_splits',
+            // prefer preview (submitted but not saved) so user input isn't lost on validation error
+            ( $preview = get_transient( 'monnify_split_payments_preview' ) ) ? $preview : get_option( 'monnify_split_payments', array() )
+        );
+
+        if ( isset( $preview ) ) {
+            // remove preview after it's used to avoid stale data
+            delete_transient( 'monnify_split_payments_preview' );
+        }
     }
 
     /**
@@ -265,82 +463,127 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
     /**
      * Payment scripts and styles
      */ 
-    public function payment_scripts() {
-        
-        // Add payment scripts and styles
-
-        if (!is_checkout_pay_page() || $this->enabled === 'no') {
-            return;
-        }
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $order_key = isset($_GET['key']) ? sanitize_text_field(wp_unslash( $_GET['key'] )) : "";
-
-        $order_id = absint(get_query_var('order-pay'));
-        $order    = wc_get_order($order_id);
-        // Generate a nonce for verification
-        $nonce = wp_create_nonce('monnify_verify_payment_' . $order_id);
-
-
-        $payment_method = method_exists($order, 'get_payment_method') ? $order->get_payment_method() : $order->payment_method;
-
-        if ($this->id !== $payment_method) {
-            return;
-        }
-
-        // Add custom payment scripts and styles here
-
-        wp_enqueue_script('jquery');
-        wp_enqueue_script('monnify', 'https://sdk.monnify.com/plugin/monnify.js', array('jquery'), WC_MONNIFY_VERSION, false);
-        wp_enqueue_script('wc_monnify', plugins_url('assets/js/monnify.js', WC_MONNIFY_MAIN_FILE), array('jquery', 'monnify'), WC_MONNIFY_VERSION, false);
-
-        $selected_payment_methods = $this->get_option('payment_methods', array(
-            'CARD',
-            'ACCOUNT_TRANSFER',
-            'USSD',
-            'PHONE_NUMBER',
-        ));
+   public function payment_scripts() {
     
-        $monnify_params = array(
-            'selectedPaymentMethods' => $selected_payment_methods,
-            'key'              => $this->monnify_api_key,
-            'contractCode'     => $this->monnify_contract,
-            'monnify_test_mode'=> $this->monnify_test_mode,
-            'mon_redirect_url'   => esc_url_raw( add_query_arg( array('monnify_order_id' => $order_id, 'monnify_nonce' => $nonce,), WC()->api_request_url( 'WC_Monnify_Gateway' ) ) ),
-            'email'            => '',
-            'amount'           => '',
-            'txnref'           => '',
-            'currency'         => '', 
-            'bank_channel'      => in_array('ACCOUNT_TRANSFER', $selected_payment_methods),
-            'card_channel'      => in_array('CARD', $selected_payment_methods),
-            'ussd_channel'      => in_array('USSD', $selected_payment_methods),
-            'phone_number_channel' => in_array('PHONE_NUMBER', $selected_payment_methods), 
-            'first_name'       => '',
-            'last_name'        => '',
-            'phone'            => '', 
-            'monnify_nonce'    => $nonce,
-            'cart_url'         => wc_get_cart_url(),
-        );
-
-        if (is_checkout_pay_page() && get_query_var('order-pay') && $order->get_id() === $order_id && $order->get_order_key() === $order_key) {
-            $monnify_params['email']        = method_exists($order, 'get_billing_email') ? $order->get_billing_email() : $order->billing_email;
-            $monnify_params['amount']       = $order->get_total();
-            $monnify_params['txnref']       = "MNFY_WP_{$order_id}_" . time() . '_' . wp_rand(1000, 9999);
-            $monnify_params['currency']     = method_exists($order, 'get_currency') ? $order->get_currency() : $order->order_currency;
-            $monnify_params['first_name']   = $order->get_billing_first_name();
-            $monnify_params['last_name']    = $order->get_billing_last_name();
-            $monnify_params['phone']        = $order->get_billing_phone();
-        }
-
-        // update_post_meta($order_id, '_monnify_txn_ref', $monnify_params['txnref']);
-        $existing_refs = get_post_meta($order_id, '_monnify_txn_refs', true);
-        if (!is_array($existing_refs)) {
-            $existing_refs = [];
-        }
-        $existing_refs[] = $monnify_params['txnref'];
-        update_post_meta($order_id, '_monnify_txn_refs', $existing_refs);
-
-        wp_localize_script('wc_monnify', 'woo_monnify_params', $monnify_params);
+    if (!is_checkout_pay_page() || $this->enabled === 'no') {
+        return;
     }
+
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $order_key = isset($_GET['key']) ? sanitize_text_field(wp_unslash($_GET['key'])) : "";
+
+    $order_id = absint(get_query_var('order-pay'));
+    $order    = wc_get_order($order_id);
+
+    if (!$order) {
+        return;
+    }
+
+    $nonce = wp_create_nonce('monnify_verify_payment_' . $order_id);
+
+    $payment_method = method_exists($order, 'get_payment_method') 
+        ? $order->get_payment_method() 
+        : $order->payment_method;
+
+    if ($this->id !== $payment_method) {
+        return;
+    }
+
+    wp_enqueue_script('jquery');
+    wp_enqueue_script('monnify', 'https://sdk.monnify.com/plugin/monnify.js', array('jquery'), WC_MONNIFY_VERSION, false);
+    wp_enqueue_script('wc_monnify', plugins_url('assets/js/monnify.js', WC_MONNIFY_MAIN_FILE), array('jquery', 'monnify'), WC_MONNIFY_VERSION, false);
+
+    $selected_payment_methods = $this->get_option('payment_methods', array(
+        'CARD',
+        'ACCOUNT_TRANSFER',
+        'USSD',
+        'PHONE_NUMBER',
+    ));
+
+    $monnify_params = array(
+        'selectedPaymentMethods' => $selected_payment_methods,
+        'key'              => $this->monnify_api_key,
+        'contractCode'     => $this->monnify_contract,
+        'monnify_test_mode'=> $this->monnify_test_mode,
+        //'mon_redirect_url' => esc_url_raw(add_query_arg(
+        //    array(
+        //        'monnify_order_id' => $order_id,
+        //        'monnify_nonce'    => $nonce,
+        //    ),
+        //    WC()->api_request_url('WC_Monnify_Gateway')
+        //)),
+        'mon_redirect_url'   => esc_url_raw( add_query_arg( array('monnify_order_id' => $order_id, 'monnify_nonce' => $nonce,), WC()->api_request_url( 'WC_Monnify_Gateway' ) ) ),
+        'email'            => '',
+        'amount'           => '',
+        'txnref'           => '',
+        'currency'         => '', 
+        'bank_channel'     => in_array('ACCOUNT_TRANSFER', $selected_payment_methods),
+        'card_channel'     => in_array('CARD', $selected_payment_methods),
+        'ussd_channel'     => in_array('USSD', $selected_payment_methods),
+        'phone_number_channel' => in_array('PHONE_NUMBER', $selected_payment_methods), 
+        'first_name'       => '',
+        'last_name'        => '',
+        'phone'            => '', 
+        'monnify_nonce'    => $nonce,
+        'cart_url'         => wc_get_cart_url(),
+        'incomeSplitConfig' => '',
+    );
+
+    if (
+        is_checkout_pay_page()
+        && get_query_var('order-pay')
+        && $order->get_id() === $order_id
+        && $order->get_order_key() === $order_key
+    ) {
+        $monnify_params['email']      = $order->get_billing_email();
+        $monnify_params['amount']     = $order->get_total();
+        $monnify_params['txnref']     = "MNFY_WP_{$order_id}_" . time() . '_' . wp_rand(1000, 9999);
+        $monnify_params['currency']   = $order->get_currency();
+        $monnify_params['first_name'] = $order->get_billing_first_name();
+        $monnify_params['last_name']  = $order->get_billing_last_name();
+        $monnify_params['phone']      = $order->get_billing_phone();
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ✅ UPDATED — SPLIT PAYMENTS INJECTION
+    |--------------------------------------------------------------------------
+    */
+
+    // ✅ ADDED — Check if split enabled
+    $split_enabled = $this->get_option('split_payment_enabled') === 'yes';
+
+    // ✅ ADDED — Fetch saved splits
+    $saved_splits = get_option('monnify_split_payments', array());
+
+   
+    // ✅ ADDED — Attach to SDK payload
+    if ($split_enabled && !empty($saved_splits)) {
+        $monnify_params['incomeSplitConfig'] = $saved_splits;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Transaction References Storage
+    |--------------------------------------------------------------------------
+    */
+
+    $existing_refs = get_post_meta($order_id, '_monnify_txn_refs', true);
+
+    if (!is_array($existing_refs)) {
+        $existing_refs = [];
+    }
+
+    $existing_refs[] = $monnify_params['txnref'];
+
+    update_post_meta($order_id, '_monnify_txn_refs', $existing_refs);
+
+    $monnify_params['return_url'] = isset( $monnify_params['return_url'] ) && $monnify_params['return_url'] !== '-1'
+    ? $monnify_params['return_url']
+    : home_url( '/' ); // or construct proper order return URL here
+    wp_localize_script( 'wc_monnify', 'woo_monnify_params', $monnify_params );
+}
 
     /**
      * Display Monnify payment icon.
@@ -513,10 +756,8 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         return absint($parts[2]);
     }
 
-    /**
-     * Verify Monnify payment and update order status
-     */
-    public function monnify_trans_verify_payment() {
+
+        public function monnify_trans_verify_payment() {
         $logger = wc_get_logger();
         $context = ['source' => 'monnify-payment'];
         
@@ -595,42 +836,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         }
     }
 
-    /**
-     * Get authentication token from Monnify
-     */
-    private function get_monnify_auth_token() {
-        $logger = wc_get_logger();
-        $context = ['source' => 'monnify-payment'];
-        
-        $monnify_login_url = $this->monnify_endpoint . '/api/v1/auth/login';
-        $auth_string = base64_encode($this->monnify_api_key . ":" . $this->monnify_secret);
-
-        $args = [
-            'headers' => [
-                'Authorization' => 'Basic ' . $auth_string,
-                'Content-Type' => 'application/json'
-            ],
-            'timeout' => 60
-        ];
-
-        $response = wp_remote_post($monnify_login_url, $args);
-
-        if (is_wp_error($response)) {
-            $logger->error('Auth token request failed: ' . $response->get_error_message(), $context);
-            return false;
-        }
-
-        $response_code = wp_remote_retrieve_response_code($response);
-        if ($response_code !== 200) {
-            $logger->error("Auth token request failed with code $response_code", $context);
-            return false;
-        }
-
-        $body = json_decode(wp_remote_retrieve_body($response));
-        return $body->responseBody->accessToken ?? false;
-    }
-
-    /**
+      /**
      * Verify transaction with Monnify API
      */
     private function verify_monnify_transaction($transaction_reference, $auth_token) {
@@ -657,7 +863,7 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         return $body ?? false;
     }
 
-    /**
+      /**
      * Handle payment status based on Monnify response
      */
     private function handle_payment_status($order, $transaction_reference, $transaction_response) {
@@ -716,7 +922,85 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         }
     }
 
-    private function complete_order( $order, $transaction_reference) {
+
+        private function get_monnify_auth_token() {
+        $logger = wc_get_logger();
+        $context = ['source' => 'monnify-payment'];
+        
+        $monnify_login_url = $this->monnify_endpoint . '/api/v1/auth/login';
+        $auth_string = base64_encode($this->monnify_api_key . ":" . $this->monnify_secret);
+
+        $args = [
+            'headers' => [
+                'Authorization' => 'Basic ' . $auth_string,
+                'Content-Type' => 'application/json'
+            ],
+            'timeout' => 60
+        ];
+
+        $response = wp_remote_post($monnify_login_url, $args);
+
+        if (is_wp_error($response)) {
+            $logger->error('Auth token request failed: ' . $response->get_error_message(), $context);
+            return false;
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            $logger->error("Auth token request failed with code $response_code", $context);
+            return false;
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response));
+        return $body->responseBody->accessToken ?? false;
+    }
+
+
+    /**
+     * Verify payment with Monnify API
+     */
+    private function verify_payment_with_monnify( $reference, $order_id ) {
+        $logger = wc_get_logger();
+        $context = [ 'source' => 'monnify-verify' ];
+
+        try {
+            $url = $this->monnify_endpoint . '/transaction/verify/' . $reference;
+
+            $response = wp_remote_get( $url, array(
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $this->monnify_secret,
+                    'Content-Type'  => 'application/json',
+                ),
+                'timeout' => 15,
+            ));
+
+            if ( is_wp_error( $response ) ) {
+                return $response;
+            }
+
+            $body = wp_remote_retrieve_body( $response );
+            $data = json_decode( $body, true );
+
+            if ( isset( $data['responseCode'] ) && $data['responseCode'] === '00' ) {
+                return array(
+                    'status' => 'successful',
+                    'amount' => $data['amountPaid'] ?? 0,
+                );
+            } else {
+                return array(
+                    'status' => 'failed',
+                    'amount' => 0,
+                );
+            }
+
+        } catch ( Exception $e ) {
+            $logger->error( 'Payment verification request error: ' . $e->getMessage(), $context );
+            return new WP_Error( 'monnify_request_error', __( 'Payment verification request failed. Please try again.', 'monnify-official' ) );
+        }
+    }
+
+
+        private function complete_order( $order, $transaction_reference) {
         // Complete payment
         $order->payment_complete($transaction_reference);
         $order->update_status('completed');
@@ -737,4 +1021,3 @@ class WC_Monnify_Gateway extends WC_Payment_Gateway {
         }        
     }
 }
- 
