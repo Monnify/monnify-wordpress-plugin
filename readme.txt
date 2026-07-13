@@ -1,8 +1,8 @@
-=== Monnify Official ===
+=== Monnify WooCommerce Payment Gateway ===
 Contributors: monnify
 Tags: payment gateway, monnify, e-commerce, woocommerce, nigeria
 Requires at least: 5.6
-Tested up to: 6.9
+Tested up to: 7.0.1
 Stable tag: 1.0.3
 Requires PHP: 7.4
 License: GPLv2 or later
@@ -62,6 +62,9 @@ Monnify
 
 == Changelog ==
 
+= 1.0.4 =
+* Added support for Monnify Sub Account Split Payments
+
 = 1.0.3 =
 * Added support for WordPress Multisite (works on both network and individual sites)
 
@@ -77,5 +80,5 @@ Monnify
 
 == Upgrade Notice ==
 
-= 1.0.3 =
-Upgrade to version 1.0.3 to start accepting payments through Monnify using the WooCommerce block checkout and enhance the payment experience for your customers.
+= 1.0.4 =
+Upgrade to version 1.0.4 to enable Monnify Sub Account Split Payments, allowing payment transactions to be automatically shared between the primary merchant account and configured sub accounts.
