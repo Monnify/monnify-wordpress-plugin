@@ -1,9 +1,9 @@
-# Monnify Official
+# Monnify Official WooCommerce Payment Gateway
 
 **Contributors:** monnify  
-**Tags:** payment gateway, monnify, e-commerce, woocommerce, nigeria  
+**Tags:** payment gateway, monnify, e-commerce, woocommerce, Nigeria  
 **Requires at least:** 5.6  
-**Tested up to:** 6.9  
+**Tested up to:** 7.0.1  
 **Stable tag:** 1.0.3  
 **Requires PHP:** 7.4  
 **License:** GPLv2 or later  
@@ -71,6 +71,9 @@ To facilitate real-time payment processing via Monnify's secure infrastructure.
 - [Monnify Privacy Policy](https://monnify.com/privacy-policy.html)  
 
 ## Changelog  
+
+### 1.0.4 
+- Added support for Monnify Sub Account Split Payments
 
 ### 1.0.3 
 - Added support for WordPress Multisite (works on both network and individual sites)
